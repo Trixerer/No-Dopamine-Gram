@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "updated": "2026-08-30",
+  "home": "https://www.instagram.com/?variant=following",
+  "host": "instagram.com",
+
+  "routes": [
+    { "id": "route.reels",        "pattern": "^/reels?(/|$)",      "label": "Reel" },
+    { "id": "route.reels.audio",  "pattern": "^/reels/audio(/|$)", "label": "Audio dei Reel" },
+    { "id": "route.explore",      "pattern": "^/explore(/|$)",     "label": "Esplora" }
+  ],
+
+  "css": [
+    {
+      "id": "css.nav.reels",
+      "label": "Voce Reel nella navigazione",
+      "selectors": [
+        "a[href^=\"/reels\"]",
+        "a:has(> div svg[aria-label=\"Reels\"])",
+        "a:has(> div svg[aria-label=\"Reel\"])",
+        "div[role=\"tablist\"] a[href*=\"/reels\"]"
+      ]
+    },
+    {
+      "id": "css.nav.explore",
+      "label": "Voce Esplora nella navigazione",
+      "selectors": [
+        "a[href^=\"/explore\"]",
+        "a:has(> div svg[aria-label=\"Explore\"])",
+        "a:has(> div svg[aria-label=\"Esplora\"])"
+      ]
+    },
+    {
+      "id": "css.profile.suggested",
+      "label": "Account suggeriti nei profili",
+      "selectors": [
+        "div:has(> div > div > a[href*=\"/explore/people\"])",
+        "a[href^=\"/explore/people\"]"
+      ]
+    },
+    {
+      "id": "css.neutralized",
+      "label": "Elementi neutralizzati dal filtro sulla risposta",
+      "selectors": [
+        "[data-nd-neutralized=\"1\"]"
+      ]
+    }
+  ],
+
+  "dom": [
+    {
+      "id": "dom.feed.suggested",
+      "label": "Blocchi \"Suggeriti per te\" nel feed",
+      "phrases": [
+        "Suggested for you",
+        "Suggeriti per te",
+        "Suggerimenti per te"
+      ],
+      "closest": "article, section, div[role=\"presentation\"]"
+    },
+    {
+      "id": "dom.feed.reelchip",
+      "label": "Post marcati come Reel dentro il feed",
+      "phrases": [],
+      "attrSelectors": [
+        "article:has(svg[aria-label=\"Reel\"])",
+        "article:has(svg[aria-label=\"Reels\"])",
+        "article:has(a[href^=\"/reel/\"])"
+      ],
+      "closest": "article"
+    }
+  ],
+
+  "response": {
+    "enabled": false,
+    "note": "Rete di sicurezza. Si attiva se il feed cronologico sparisce o si sporca. Sostituisce, non cancella: chiave, posizione e lunghezza degli array restano intatte.",
+    "urlPatterns": [
+      "/api/v1/feed/timeline",
+      "/graphql/query",
+      "/api/graphql"
+    ],
+    "rules": [
+      {
+        "id": "resp.injected",
+        "label": "Elementi iniettati dall'algoritmo",
+        "match": { "hasKey": "injected" }
+      },
+      {
+        "id": "resp.clips",
+        "label": "Reel serviti dentro il feed",
+        "match": { "keyEquals": { "media_type": 2 } }
+      },
+      {
+        "id": "resp.notfollowing",
+        "label": "Contenuto di account che non segui",
+        "match": { "keyEquals": { "explore": true } }
+      }
+    ]
+  }
+}
