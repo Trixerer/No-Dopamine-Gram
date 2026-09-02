@@ -4,7 +4,7 @@ import 'package:flutter/services.dart' show rootBundle;
 
 /// Una rotta che non deve esistere dentro l'app (livello A).
 class RouteRule {
-  const RouteRule({required this.id, required this.pattern, required this.label});
+  RouteRule({required this.id, required this.pattern, required this.label});
 
   final String id;
   final String pattern;
