@@ -65,7 +65,10 @@
     var out = [];
     (R.css || []).forEach(function (rule) {
       var sel = (rule.selectors || []).join(',\n');
-      if (sel) out.push(sel + ' {\n  display: none !important;\n}');
+      if (!sel) return;
+      /* Quasi tutte nascondono; qualcuna deve dire altro, per esempio togliere
+       * lo scorrimento a un nastro invece di farlo sparire. */
+      out.push(sel + ' {\n  ' + (rule.declarations || 'display: none !important;') + '\n}');
     });
     if (!out.length) return;
     var st = document.createElement('style');
@@ -177,6 +180,84 @@
         }
       }
     }
+  }
+
+  /* ---------- i binari: dove si scorre all'infinito ---------- */
+  /* Il reel che ti manda un amico non arriva da solo. Instagram lo mette in
+   * cima a un nastro agganciato allo scorrimento, con dietro quattordici
+   * "Suggested" gia' caricati e pronti: misurato, 806 pixel di finestra su
+   * 12152 di contenuto. Il reel ricevuto e' roba tua, la coda no.
+   *
+   * Qui il nastro viene fermato: si tiene il primo, si marca il resto, e allo
+   * scroller si toglie lo scorrimento. Non si cancella niente - la coda resta
+   * nel DOM di React, semplicemente non si puo' piu' raggiungere. */
+  var RAIL = 'data-nd-rail';
+  var lastRailScan = 0;
+
+  function snapItems(scroller) {
+    var all = scroller.querySelectorAll('*');
+    var out = [];
+    for (var i = 0; i < all.length; i++) {
+      var a = getComputedStyle(all[i]).scrollSnapAlign;
+      if (a && a !== 'none') out.push(all[i]);
+    }
+    return out;
+  }
+
+  function isRail(el, rule) {
+    var cs = getComputedStyle(el);
+    if (!cs.scrollSnapType) return false;
+    if (cs.scrollSnapType.charAt(0) !== (rule.snapAxis || 'y')) return false;
+    if (el.clientHeight < (rule.minHeight || 300)) return false;
+    if (el.scrollHeight <= el.clientHeight * 1.5) return false;
+    return !!el.querySelector('video');
+  }
+
+  function lockRails() {
+    var rules = R.rails || [];
+    if (!rules.length) return;
+    /* `getComputedStyle` forza il ricalcolo dello stile: non si puo' fare a
+     * ogni mutazione, e Instagram ne produce in continuazione. */
+    var now = Date.now();
+    if (now - lastRailScan < 400) return;
+    lastRailScan = now;
+
+    var vids = document.getElementsByTagName('video');
+    if (!vids.length) return;
+
+    rules.forEach(function (rule) {
+      /* I candidati sono solo gli antenati di un video: una manciata, non
+       * tutti i div della pagina. */
+      for (var v = 0; v < vids.length && v < 3; v++) {
+        for (var el = vids[v].parentElement; el; el = el.parentElement) {
+          if (el.getAttribute(RAIL) === '1') break;
+          if (!isRail(el, rule)) continue;
+          el.setAttribute(RAIL, '1');
+          hit(rule.id);
+          /* L'audit del CSS gira all'avvio e a ogni cambio di rotta, ma il
+           * visore dei reel si apre senza cambiare rotta: senza questo, la
+           * regola che toglie lo scorrimento risulterebbe muta mentre lo sta
+           * togliendo. */
+          setTimeout(auditCss, 300);
+          break;
+        }
+      }
+      /* La coda si rimarca a ogni giro: gli elementi arrivano dopo. Ne sono
+       * arrivati 42 in piu' mentre il nastro era gia' fermo. */
+      var rails = document.querySelectorAll('[' + RAIL + '="1"]');
+      for (var r = 0; r < rails.length; r++) {
+        var items = snapItems(rails[r]);
+        for (var k = rule.keep == null ? 1 : rule.keep; k < items.length; k++) {
+          neutralize(items[k], rule.id);
+        }
+        /* Sotto al primo reel resta uno schermo di vuoto: e' il contenitore
+         * della coda, che tiene la sua altezza anche con dentro tutto
+         * nascosto. Nasconderlo *sembra* la rifinitura giusta e invece spegne
+         * il video - provato: riquadro pieno, readyState 4, e il player in
+         * pausa che non riparte. Il vuoto e' irraggiungibile perche' lo
+         * scorrimento non c'e' piu': si lascia stare. */
+      }
+    });
   }
 
   /* ---------- livello D: lettura delle risposte, mai scrittura ---------- */
@@ -404,6 +485,7 @@
   function scanAll(root) {
     if (!root) return;
     retargetLinks();
+    lockRails();
     scanAttrRules(root);
     scanPhraseRules(root);
     scanBlocklist(root);

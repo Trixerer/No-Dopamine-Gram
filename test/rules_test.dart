@@ -30,6 +30,11 @@ void main() {
       expect(rules.blockedRouteFor('/direct/inbox/'), isNull);
       // Un profilo che comincia per "reel" non è la sezione Reel.
       expect(rules.blockedRouteFor('/reelsofcheese'), isNull);
+      // Il singolare e il plurale non sono la stessa cosa: `/reel/<codice>` è
+      // *un* reel — quello che ti manda un amico — e deve passare. È il
+      // nastro, `/reels/`, a non dover esistere.
+      expect(rules.blockedRouteFor('/reel/DdX123abc/'), isNull);
+      expect(rules.blockedRouteFor('/unamico/reel/DdX123abc/'), isNull);
       // La ricerca passa: serve a trovare account, e la griglia di post che
       // c'è sopra la toglie il livello B, non il livello A.
       expect(rules.blockedRouteFor('/explore/'), isNull);
@@ -46,6 +51,7 @@ void main() {
       }
 
       // L'ordine conta: la ricerca è dentro esplora e deve vincere lei.
+      expect(tagFor('/reel/DdX123abc/'), 'reel');
       expect(tagFor('/explore/search/?q=x'), 'search');
       expect(tagFor('/explore/'), 'explore');
       expect(tagFor('/'), 'home');

@@ -1,9 +1,13 @@
 {
-  "version": 7,
+  "version": 8,
   "updated": "2026-09-13",
   "home": "https://www.instagram.com/?variant=following",
   "host": "instagram.com",
   "routeTags": [
+    {
+      "tag": "reel",
+      "pattern": "^/reel/"
+    },
     {
       "tag": "search",
       "pattern": "^/explore/search"
@@ -24,7 +28,7 @@
   "routes": [
     {
       "id": "route.reels",
-      "pattern": "^/reels?(/|$)",
+      "pattern": "^/reels(/|$)",
       "label": "Reel",
       "backstop": true
     },
@@ -42,6 +46,15 @@
       "pattern": "^/$",
       "to": "/?variant=following",
       "linkSelector": "a[href=\"/\"]"
+    }
+  ],
+  "rails": [
+    {
+      "id": "rail.reels",
+      "label": "Nastro dei Reel: si ferma su quello aperto",
+      "snapAxis": "y",
+      "minHeight": 300,
+      "keep": 1
     }
   ],
   "css": [
@@ -80,6 +93,14 @@
       "selectors": [
         "[data-nd-neutralized=\"1\"]"
       ]
+    },
+    {
+      "id": "css.rail.locked",
+      "label": "Scorrimento tolto al nastro dei Reel",
+      "selectors": [
+        "[data-nd-rail=\"1\"]"
+      ],
+      "declarations": "overflow: hidden !important; scroll-snap-type: none !important;"
     }
   ],
   "dom": [

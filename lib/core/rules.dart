@@ -140,6 +140,14 @@ class RuleSet {
       TrackedRule(id: r['id'] as String, label: r['label'] as String, level: 'D'),
     for (final r in rewrites)
       TrackedRule(id: r.id, label: r.label, level: 'A'),
+    for (final r in ((_raw['rails'] as List?) ?? const [])
+        .cast<Map<String, dynamic>>())
+      TrackedRule(
+        id: r['id'] as String,
+        label: r['label'] as String,
+        level: 'C',
+        kind: _kindOf(r),
+      ),
     const TrackedRule(
       id: 'rewrite.failed',
       label: 'Riscritture rinunciate: la rotta di arrivo non ha retto',

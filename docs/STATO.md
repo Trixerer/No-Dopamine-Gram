@@ -135,6 +135,40 @@ dichiarazione nel `pubspec.yaml`), unicità degli id, cosa il livello A blocca e
 cosa non deve bloccare (`/reelsofcheese` non è la sezione Reel), e
 l'allineamento del livello D alla scelta dell'utente.
 
+### `rails` — un reel per volta, quello che ti hanno mandato
+Il reel che ti manda un amico si apriva gia' prima, e il livello A non
+c'entrava niente: Instagram **non cambia rotta**, lo mostra in un visore dentro
+la conversazione. Ecco perche' `route.reels` non era mai scattata su quel
+percorso.
+
+Il problema era un altro. Misurato aprendo un reel ricevuto: il visore e' un
+contenitore con `scroll-snap-type: y mandatory`, 806 pixel di finestra su
+**12152 di contenuto**, con **quindici video gia' caricati**. Il primo e' il
+reel ricevuto; dietro ci sono quattordici "Suggested", e continuano ad
+arrivarne (ne ho contati 57 senza muovere un dito). Toccare il reel di un
+amico voleva dire entrare nel nastro infinito dalla porta di servizio.
+
+`rail.reels` lo ferma. Trova il contenitore dalla sua firma — asse dello snap,
+altezza, contiene un video — lo marca `data-nd-rail`, tiene i primi `keep`
+elementi agganciati allo snap e marca tutti gli altri. La regola
+`css.rail.locked` fa il resto: `overflow: hidden` e `scroll-snap-type: none`.
+Verificato sul dispositivo: tre swipe verso l'alto, `scrollTop` resta 0, un
+solo elemento visibile, e il video continua a girare.
+
+Il candidato non si cerca fra tutti i div della pagina ma solo fra gli antenati
+dei primi video, e non piu' di una volta ogni 400 ms: `getComputedStyle` forza
+il ricalcolo dello stile, e Instagram produce mutazioni in continuazione.
+
+**Una cosa da non rifare.** Sotto al reel resta uno schermo di vuoto: il
+contenitore della coda tiene la sua altezza anche con dentro tutto nascosto.
+Nasconderlo sembra la rifinitura ovvia, e invece **spegne il video** — riquadro
+pieno, `readyState` 4, player in pausa che non riparte. Il vuoto e'
+irraggiungibile perche' lo scorrimento non c'e' piu': si lascia stare.
+
+E il singolare non e' il plurale: `route.reels` ora blocca `^/reels(/|$)`, il
+nastro. `/reel/<codice>` — *un* reel — passa, perche' tanto ci pensa il
+`rail` a non farlo diventare un nastro.
+
 ### `rewrites` — l'unica cosa che il livello A riscrive
 "Per te" non è una sezione da vietare, è il feed sbagliato: bloccarla
 lascerebbe l'utente senza casa. `rewrite.home` manda `/` su
@@ -212,7 +246,7 @@ Con il feed cronologico questo percorso è raramente in uso.
    non è ancora passato un Reel, quindi non è mai scattata. I suoi
    `article:has(...)` sono plausibili — `<article>` esiste ed è il contenitore
    di un post — ma plausibile non è verificato. Va guardata sul vivo alla
-   prima occasione.
+   prima occasione. (È marcata `backstop`, quindi non allarma.)
 
 2. **Aggiornare il documento di design.** È indietro su tre cose, non più una
    sola: il cambio sul livello D, la riscrittura di rotta del livello A
