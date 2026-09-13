@@ -13,7 +13,9 @@ class NoDopamineGramApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'No Dopamine Gram',
+      // Quello che si legge nelle app recenti. Il nome sulla home viene invece
+      // da `android:label` nel manifest: vanno tenuti allineati a mano.
+      title: 'NDG',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       // Il tema si vede solo nelle diagnostiche e nel banner del canarino:
