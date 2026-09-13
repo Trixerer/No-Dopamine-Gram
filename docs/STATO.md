@@ -176,16 +176,20 @@ Con il feed cronologico questo percorso è raramente in uso.
    Serve il login dell'utente: non è una cosa che si può automatizzare. È il
    passo che sblocca tutti gli altri.
 
-2. **Tarare le regole che restano.** Dopo il primo accesso vero (13 settembre)
-   funzionano e sono confermate sul campo: `css.nav.reels`, `css.nav.explore`,
-   `css.profile.suggested`, `dom.feed.suggested`. Resta a zero
-   **`dom.feed.reelchip`**, e non è taratura rimandabile per pigrizia: i suoi
-   `attrSelectors` sono tutti `article:has(...)`, e `<article>` non esiste più.
-   Va riscritta, ma serve un feed **con dei post dentro** per farlo: l'account
-   di prova segue troppo poca gente e il feed Following è vuoto, quindi
-   Instagram lo riempie di soli account suggeriti.
+2. **Tarare le regole che restano.** Confermate sul campo il 13 settembre:
+   `css.nav.reels`, `css.explore.grid`, `css.profile.suggested`,
+   `dom.feed.suggested`. `dom.feed.reelchip` è ancora a zero, ma **non è
+   rotta**: nel feed non è ancora passato un solo Reel, e i suoi selettori
+   `article:has(...)` sono validi (vedi sotto). Va riguardata quando un Reel
+   comparirà davvero.
 
-3. **Aggiornare il documento di design** con il cambio sul livello D.
+3. **Decidere cosa fare del feed algoritmico.** Toccando "casa" dentro la SPA
+   si va su `/`, cioè "Per te": misurato, ci arrivano post di account non
+   seguiti e **inserzioni** (`jdsportsit`, "Ad · Shop now"). Il feed
+   cronologico è un'altra rotta, `/?variant=following`. O si riscrive la rotta
+   di casa, o si accetta che il tasto casa porti all'algoritmo.
+
+4. **Aggiornare il documento di design** con il cambio sul livello D.
 
 Chiuso il 13 settembre: asset dichiarati nel `pubspec.yaml`, `shell_page.dart`
 scritto, `main.dart` riscritto, smoke test del contatore sostituito con i test
@@ -232,10 +236,17 @@ document-start né l'intercettazione delle richieste.
 **`closest()` senza tetto spegne lo schermo.** È il guasto che ha reso l'app
 inutilizzabile al primo accesso vero, ed è istruttivo. La regola
 `dom.feed.suggested` cercava il contenitore di un blocco "Suggested for you"
-con `closest('article, section, div[role="presentation"]')`. Sull'Instagram di
-oggi **`<article>` non esiste più e nemmeno `div[role="presentation"]`**
-(contati: zero di entrambi): l'unica voce che corrispondeva ancora era
-`section`, e il `<section>` più vicino è quello che avvolge **tutta l'app**.
+con `closest('article, section, div[role="presentation"]')`. Nel momento in cui è
+successo, in quella pagina, **di `<article>` e `div[role="presentation"]` ce
+n'erano zero**: l'unica voce che corrispondeva ancora era `section`, e il
+`<section>` più vicino è quello che avvolge **tutta l'app**.
+
+Attenzione a non trarne la lezione sbagliata, come ho fatto io sul momento:
+`<article>` **esiste**, ed è davvero il contenitore di un post. Mancava perché
+quel feed non aveva nemmeno un post dentro — era tutto account suggeriti.
+Il che rende la trappola peggiore, non migliore: il selettore era corretto e
+ha funzionato per mesi, e a farlo sparare in alto è bastata una pagina in uno
+stato insolito.
 Risultato: un elemento marcato, 193 KB di pagina nascosti, schermo nero con la
 sola barra di navigazione.
 

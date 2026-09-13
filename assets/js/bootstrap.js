@@ -39,6 +39,26 @@
     try { window.flutter_inappwebview.callHandler(channel, data); } catch (e) {}
   }
 
+  /* ---------- l'etichetta della rotta ---------- */
+  /* Una regola CSS non sa su che pagina si trova. Marcando <html> con la
+   * rotta corrente, i selettori possono valere solo dove hanno senso: le
+   * tessere di un post vanno nascoste su esplora, non sul profilo di
+   * qualcuno, che e' esattamente il posto in cui uno vuole vederle. */
+  function routeTag() {
+    var tags = R.routeTags || [];
+    for (var i = 0; i < tags.length; i++) {
+      try {
+        if (new RegExp(tags[i].pattern).test(location.pathname)) return tags[i].tag;
+      } catch (e) {}
+    }
+    return 'other';
+  }
+
+  function markRoute() {
+    var el = document.documentElement;
+    if (el) el.setAttribute('data-nd-route', routeTag());
+  }
+
   /* ---------- livello B: CSS ---------- */
   function installCss() {
     if (document.getElementById('nd-style')) return;
@@ -307,6 +327,7 @@
     var here = location.pathname + location.search;
     if (here === lastPath) return;
     lastPath = here;
+    markRoute();
     if (enforceRoute()) return;
     report('nd_route', { path: location.pathname, search: location.search });
     scheduleScan();
@@ -347,10 +368,12 @@
   }
 
   /* ---------- avvio ---------- */
+  markRoute();
   installNetworkReaders();
   watchRoutes();
 
   function onReady() {
+    markRoute();
     installCss();
     startObserver();
     lastPath = location.pathname;

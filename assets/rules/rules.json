@@ -1,8 +1,26 @@
 {
-  "version": 2,
+  "version": 5,
   "updated": "2026-09-13",
   "home": "https://www.instagram.com/?variant=following",
   "host": "instagram.com",
+  "routeTags": [
+    {
+      "tag": "search",
+      "pattern": "^/explore/search"
+    },
+    {
+      "tag": "explore",
+      "pattern": "^/explore"
+    },
+    {
+      "tag": "home",
+      "pattern": "^/$"
+    },
+    {
+      "tag": "direct",
+      "pattern": "^/direct"
+    }
+  ],
   "routes": [
     {
       "id": "route.reels",
@@ -13,11 +31,6 @@
       "id": "route.reels.audio",
       "pattern": "^/reels/audio(/|$)",
       "label": "Audio dei Reel"
-    },
-    {
-      "id": "route.explore",
-      "pattern": "^/explore(/|$)",
-      "label": "Esplora"
     }
   ],
   "css": [
@@ -32,19 +45,21 @@
       ]
     },
     {
-      "id": "css.nav.explore",
-      "label": "Voce Esplora nella navigazione",
+      "id": "css.explore.grid",
+      "label": "Griglia di post su esplora e ricerca",
       "selectors": [
-        "a[href^=\"/explore\"]",
-        "a:has(> div svg[aria-label=\"Explore\"])",
-        "a:has(> div svg[aria-label=\"Esplora\"])"
+        "html[data-nd-route=\"explore\"] main a[href*=\"/p/\"]",
+        "html[data-nd-route=\"explore\"] main a[href*=\"/reel/\"]",
+        "html[data-nd-route=\"search\"] main a[href*=\"/p/\"]",
+        "html[data-nd-route=\"search\"] main a[href*=\"/reel/\"]"
       ]
     },
     {
       "id": "css.profile.suggested",
-      "label": "Account suggeriti nei profili",
+      "label": "Carosello di account suggeriti (profili, dopo il follow)",
       "selectors": [
-        "div:has(> div > div > a[href*=\"/explore/people\"])",
+        "main div[role=\"presentation\"]:has([aria-label=\"Dismiss\"])",
+        "main div[role=\"presentation\"]:has([aria-label=\"Ignora\"])",
         "a[href^=\"/explore/people\"]"
       ]
     },

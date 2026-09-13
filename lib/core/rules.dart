@@ -13,6 +13,15 @@ class RouteRule {
   late final RegExp regExp = RegExp(pattern);
 }
 
+/// L'etichetta che finisce su `<html data-nd-route>`, perche' una regola CSS
+/// possa valere solo sulla pagina giusta.
+class RouteTag {
+  const RouteTag({required this.tag, required this.pattern});
+
+  final String tag;
+  final String pattern;
+}
+
 /// Identita' di una regola qualsiasi, per il canarino.
 class TrackedRule {
   const TrackedRule({required this.id, required this.label, required this.level});
@@ -81,6 +90,14 @@ class RuleSet {
       label: 'Post nascosti su segnalazione del livello D',
       level: 'D',
     ),
+  ];
+
+  /// In ordine: la prima che corrisponde vince, e l'ordine e' quello del file
+  /// (la ricerca sta dentro esplora, quindi deve venire prima).
+  late final List<RouteTag> routeTags = [
+    for (final t in ((_raw['routeTags'] as List?) ?? const [])
+        .cast<Map<String, dynamic>>())
+      RouteTag(tag: t['tag'] as String, pattern: t['pattern'] as String),
   ];
 
   RouteRule? blockedRouteFor(String path) {

@@ -149,45 +149,49 @@ class _ShellPageState extends State<ShellPage> with WidgetsBindingObserver {
       },
       child: Scaffold(
         body: SafeArea(
-          child: Stack(
-            children: [
-              IgWebView(
-                key: _webKey,
-                rules: boot.rules,
-                store: boot.store,
-                userAgent: boot.userAgent,
-                bootstrapJs: boot.bootstrapJs,
-                onRouteBlocked: _onRouteBlocked,
-              ),
+          // La WebView sta nel `child`: il banner che compare e sparisce non
+          // deve ricostruirla.
+          child: AnimatedBuilder(
+            animation: boot.store,
+            child: Stack(
+              children: [
+                IgWebView(
+                  key: _webKey,
+                  rules: boot.rules,
+                  store: boot.store,
+                  userAgent: boot.userAgent,
+                  bootstrapJs: boot.bootstrapJs,
+                  onRouteBlocked: _onRouteBlocked,
+                ),
+                // L'accesso alle diagnostiche, nell'angolo, a pressione lunga.
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onLongPress: () => _openDiagnostics(boot.store),
+                    child: const SizedBox(width: 56, height: 56),
+                  ),
+                ),
+              ],
+            ),
+            builder: (context, child) {
+              final alarming = boot.store.alarming;
               // L'app è invisibile finché qualcosa non si rompe: è il senso
-              // del canarino.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: AnimatedBuilder(
-                  animation: boot.store,
-                  builder: (context, _) {
-                    final alarming = boot.store.alarming;
-                    if (alarming.isEmpty) return const SizedBox.shrink();
-                    return _CanaryBanner(
+              // del canarino. Quando si rompe, però, il banner *sposta* la
+              // pagina invece di coprirla — sopra c'è la barra di Instagram,
+              // e coprirla significa togliere la ricerca.
+              return Column(
+                children: [
+                  if (alarming.isNotEmpty)
+                    _CanaryBanner(
                       count: alarming.length,
                       onTap: () => _openDiagnostics(boot.store),
-                    );
-                  },
-                ),
-              ),
-              // L'accesso alle diagnostiche, nell'angolo, a pressione lunga.
-              Positioned(
-                top: 0,
-                left: 0,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onLongPress: () => _openDiagnostics(boot.store),
-                  child: const SizedBox(width: 56, height: 56),
-                ),
-              ),
-            ],
+                    ),
+                  Expanded(child: child!),
+                ],
+              );
+            },
           ),
         ),
       ),

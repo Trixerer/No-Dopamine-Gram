@@ -21,16 +21,36 @@ void main() {
       expect(rules.tracked.map((r) => r.level).toSet(), {'A', 'B', 'C', 'D'});
     });
 
-    test('il livello A blocca i reel e l\'esplora, non il resto', () async {
+    test('il livello A blocca i reel, non il resto', () async {
       final rules = await RuleSet.load();
       expect(rules.blockedRouteFor('/reels/'), isNotNull);
-      expect(rules.blockedRouteFor('/explore/'), isNotNull);
-      expect(rules.blockedRouteFor('/explore/people/'), isNotNull);
+      expect(rules.blockedRouteFor('/reels/audio/123/'), isNotNull);
       expect(rules.blockedRouteFor('/'), isNull);
       expect(rules.blockedRouteFor('/p/Cxyz123/'), isNull);
       expect(rules.blockedRouteFor('/direct/inbox/'), isNull);
       // Un profilo che comincia per "reel" non è la sezione Reel.
       expect(rules.blockedRouteFor('/reelsofcheese'), isNull);
+      // La ricerca passa: serve a trovare account, e la griglia di post che
+      // c'è sopra la toglie il livello B, non il livello A.
+      expect(rules.blockedRouteFor('/explore/'), isNull);
+      expect(rules.blockedRouteFor('/explore/search/'), isNull);
+    });
+
+    test('ogni pagina riceve al più un\'etichetta di rotta', () async {
+      final rules = await RuleSet.load();
+      String tagFor(String path) {
+        for (final t in rules.routeTags) {
+          if (RegExp(t.pattern).hasMatch(path)) return t.tag;
+        }
+        return 'other';
+      }
+
+      // L'ordine conta: la ricerca è dentro esplora e deve vincere lei.
+      expect(tagFor('/explore/search/?q=x'), 'search');
+      expect(tagFor('/explore/'), 'explore');
+      expect(tagFor('/'), 'home');
+      expect(tagFor('/direct/inbox/'), 'direct');
+      expect(tagFor('/qualcuno/'), 'other');
     });
 
     test('asInjectedJson allinea il livello D alla scelta dell\'utente', () async {
