@@ -1,15 +1,25 @@
 {
-  "version": 1,
-  "updated": "2026-08-30",
+  "version": 2,
+  "updated": "2026-09-13",
   "home": "https://www.instagram.com/?variant=following",
   "host": "instagram.com",
-
   "routes": [
-    { "id": "route.reels",        "pattern": "^/reels?(/|$)",      "label": "Reel" },
-    { "id": "route.reels.audio",  "pattern": "^/reels/audio(/|$)", "label": "Audio dei Reel" },
-    { "id": "route.explore",      "pattern": "^/explore(/|$)",     "label": "Esplora" }
+    {
+      "id": "route.reels",
+      "pattern": "^/reels?(/|$)",
+      "label": "Reel"
+    },
+    {
+      "id": "route.reels.audio",
+      "pattern": "^/reels/audio(/|$)",
+      "label": "Audio dei Reel"
+    },
+    {
+      "id": "route.explore",
+      "pattern": "^/explore(/|$)",
+      "label": "Esplora"
+    }
   ],
-
   "css": [
     {
       "id": "css.nav.reels",
@@ -46,7 +56,6 @@
       ]
     }
   ],
-
   "dom": [
     {
       "id": "dom.feed.suggested",
@@ -56,7 +65,11 @@
         "Suggeriti per te",
         "Suggerimenti per te"
       ],
-      "closest": "article, section, div[role=\"presentation\"]"
+      "closest": "article",
+      "climb": {
+        "maxLevels": 8,
+        "maxHtml": 20000
+      }
     },
     {
       "id": "dom.feed.reelchip",
@@ -67,10 +80,13 @@
         "article:has(svg[aria-label=\"Reels\"])",
         "article:has(a[href^=\"/reel/\"])"
       ],
-      "closest": "article"
+      "closest": "article",
+      "climb": {
+        "maxLevels": 8,
+        "maxHtml": 20000
+      }
     }
   ],
-
   "response": {
     "enabled": false,
     "note": "Rete di sicurezza. Si attiva se il feed cronologico sparisce o si sporca. Sostituisce, non cancella: chiave, posizione e lunghezza degli array restano intatte.",
@@ -83,17 +99,27 @@
       {
         "id": "resp.injected",
         "label": "Elementi iniettati dall'algoritmo",
-        "match": { "hasKey": "injected" }
+        "match": {
+          "hasKey": "injected"
+        }
       },
       {
         "id": "resp.clips",
         "label": "Reel serviti dentro il feed",
-        "match": { "keyEquals": { "media_type": 2 } }
+        "match": {
+          "keyEquals": {
+            "media_type": 2
+          }
+        }
       },
       {
         "id": "resp.notfollowing",
         "label": "Contenuto di account che non segui",
-        "match": { "keyEquals": { "explore": true } }
+        "match": {
+          "keyEquals": {
+            "explore": true
+          }
+        }
       }
     ]
   }

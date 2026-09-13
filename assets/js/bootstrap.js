@@ -67,8 +67,62 @@
   }
 
   /* ---------- livello C: DOM ---------- */
+
+  /* Il pericolo del livello C non e' nascondere troppo poco, e' nascondere
+   * troppo. `closest()` risale finche' non trova una corrispondenza: se il
+   * selettore non descrive piu' niente di vicino - e Instagram ha smesso di
+   * usare <article> e role="presentation" - arriva fino al <section> che
+   * avvolge tutta l'app, e una regola sbagliata spegne lo schermo.
+   *
+   * Questo cancello sta in mezzo e trasforma quel caso in "la regola non fa
+   * niente", che e' un guasto che il canarino sa gia' raccontare. */
+  function tooBigToHide(el) {
+    var root = document.querySelector('main') || document.body;
+    if (!root || !el.innerHTML) return false;
+    return el.innerHTML.length > (root.innerHTML.length || 1) * 0.4;
+  }
+
+  function safeToHide(el) {
+    if (!el || el.nodeType !== 1) return false;
+    var tag = el.tagName;
+    if (tag === 'HTML' || tag === 'BODY' || tag === 'MAIN') return false;
+    var main = document.querySelector('main');
+    if (main && (el === main || el.contains(main))) return false;
+    return !tooBigToHide(el);
+  }
+
+  /* Il contenitore da marcare. Si sale di un numero fisso di livelli e si
+   * resta dentro un budget di contenuto: una risalita illimitata e' proprio
+   * quella che finiva sulla radice della pagina. */
+  function hostFor(start, rule) {
+    if (!start) return null;
+    var climb = rule.climb || {};
+    var maxLevels = climb.maxLevels || 8;
+    var maxHtml = climb.maxHtml || 20000;
+
+    /* Se la regola nomina un contenitore e quel contenitore e' stretto, vince
+     * lui: un punto di riferimento vero e' piu' preciso di qualunque misura. */
+    if (rule.closest) {
+      var near = null;
+      try { near = start.closest(rule.closest); } catch (e) {}
+      if (near && safeToHide(near) && near.innerHTML.length <= maxHtml) return near;
+    }
+
+    var host = null;
+    var el = start;
+    for (var i = 0; el && i < maxLevels; i++, el = el.parentElement) {
+      if (!safeToHide(el) || el.innerHTML.length > maxHtml) break;
+      host = el;
+    }
+    return host;
+  }
+
   function neutralize(el, ruleId) {
-    if (!el || el.getAttribute(MARK) === '1') return;
+    if (!el) return;
+    if (el.getAttribute(MARK) === '1') return;
+    /* Il rifiuto va contato: una regola che punta sempre troppo in alto e'
+     * rotta, e deve vedersi nelle diagnostiche invece di sparire in silenzio. */
+    if (!safeToHide(el)) { hit('dom.refused'); return; }
     el.setAttribute(MARK, '1');
     hit(ruleId);
   }
@@ -79,7 +133,7 @@
         var nodes;
         try { nodes = root.querySelectorAll(sel); } catch (e) { return; }
         for (var i = 0; i < nodes.length; i++) {
-          neutralize(nodes[i].closest(rule.closest) || nodes[i], rule.id);
+          neutralize(hostFor(nodes[i], rule), rule.id);
         }
       });
     });
@@ -97,8 +151,7 @@
         var rule = rules[i];
         for (var j = 0; j < rule.phrases.length; j++) {
           if (text.indexOf(rule.phrases[j]) !== -1) {
-            var host = node.parentElement && node.parentElement.closest(rule.closest);
-            if (host) neutralize(host, rule.id);
+            neutralize(hostFor(node.parentElement, rule), rule.id);
             break;
           }
         }
@@ -249,8 +302,11 @@
 
   var lastPath = null;
   function onRouteChange() {
-    if (location.pathname === lastPath) return;
-    lastPath = location.pathname;
+    /* La query fa parte della rotta: passare da "Per te" a "Following" cambia
+     * solo `?variant=`, e senza guardarla il cambio di feed non si vede. */
+    var here = location.pathname + location.search;
+    if (here === lastPath) return;
+    lastPath = here;
     if (enforceRoute()) return;
     report('nd_route', { path: location.pathname, search: location.search });
     scheduleScan();

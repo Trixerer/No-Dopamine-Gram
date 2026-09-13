@@ -176,11 +176,14 @@ Con il feed cronologico questo percorso è raramente in uso.
    Serve il login dell'utente: non è una cosa che si può automatizzare. È il
    passo che sblocca tutti gli altri.
 
-2. **Tarare le regole su ciò che si vede davvero.** I selettori CSS e le frasi
-   del livello C sono ipotesi ragionevoli scritte senza aver visto l'HTML
-   loggato: vanno confermati uno per uno guardando la pagina vera. Il primo
-   avvio ha già promosso `css.nav.reels` e `css.nav.explore` da ipotesi a
-   fatto; tutte le altre sono ancora a zero colpi.
+2. **Tarare le regole che restano.** Dopo il primo accesso vero (13 settembre)
+   funzionano e sono confermate sul campo: `css.nav.reels`, `css.nav.explore`,
+   `css.profile.suggested`, `dom.feed.suggested`. Resta a zero
+   **`dom.feed.reelchip`**, e non è taratura rimandabile per pigrizia: i suoi
+   `attrSelectors` sono tutti `article:has(...)`, e `<article>` non esiste più.
+   Va riscritta, ma serve un feed **con dei post dentro** per farlo: l'account
+   di prova segue troppo poca gente e il feed Following è vuoto, quindi
+   Instagram lo riempie di soli account suggeriti.
 
 3. **Aggiornare il documento di design** con il cambio sul livello D.
 
@@ -192,8 +195,17 @@ sulle regole, build e installazione sull'emulatore riuscite.
 
 ## Verifiche aperte (servono un account loggato)
 
-1. **`?variant=following` esiste ancora sul web?** È la domanda che vale tutte
-   le altre: se il feed cronologico c'è, il livello D resta dormiente.
+1. ~~**`?variant=following` esiste ancora sul web?**~~ **Sì, verificato il 13
+   settembre da loggati.** In cima al feed c'è un menu a tendina "Per te ⌄"
+   con due voci, *Following* e *Favorites*: scegliendo Following l'URL diventa
+   esattamente `https://www.instagram.com/?variant=following`, che è già il
+   valore di `home`. **Il livello D resta dormiente.**
+
+   Due code da tenere a mente: il passaggio fra le varianti cambia solo la
+   query e non il path (per questo `onRouteChange` ora guarda anche
+   `location.search`), e navigando su "casa" dentro la SPA si torna a `/`
+   senza variante — il feed algoritmico rientra dalla finestra. Va deciso se
+   riscrivere la rotta.
 2. **Quanto sono complete storie e direct sul web mobile** rispetto all'app
    nativa? È il rischio più concreto per la lista di funzioni.
 3. **Il service worker `/www-service-worker.js?s=push` ha un handler `fetch`?**
@@ -216,6 +228,25 @@ include `-dontoptimize`. La beta **6.2.0-beta.3** usa la variante
 piano B è un `PlatformView` con canale nativo — il plugin ufficiale
 `webview_flutter` **non** è un'alternativa: non espone né l'iniezione a
 document-start né l'intercettazione delle richieste.
+
+**`closest()` senza tetto spegne lo schermo.** È il guasto che ha reso l'app
+inutilizzabile al primo accesso vero, ed è istruttivo. La regola
+`dom.feed.suggested` cercava il contenitore di un blocco "Suggested for you"
+con `closest('article, section, div[role="presentation"]')`. Sull'Instagram di
+oggi **`<article>` non esiste più e nemmeno `div[role="presentation"]`**
+(contati: zero di entrambi): l'unica voce che corrispondeva ancora era
+`section`, e il `<section>` più vicino è quello che avvolge **tutta l'app**.
+Risultato: un elemento marcato, 193 KB di pagina nascosti, schermo nero con la
+sola barra di navigazione.
+
+La lezione non è "correggi quel selettore" — è che `closest()` risale finché
+non trova qualcosa, quindi *una regola scritta male può sempre arrivare alla
+radice*. Ora in mezzo c'è un cancello (`safeToHide` + `hostFor` in
+`bootstrap.js`): non si marca mai `html`, `body`, `main`, né un elemento che
+contiene `main`, né uno che pesa più del 40% della pagina; e la risalita è
+limitata a `climb.maxLevels` livelli dentro `climb.maxHtml` caratteri. Il caso
+peggiore diventa "la regola non fa niente", che il canarino sa già raccontare —
+e i rifiuti si contano sotto `dom.refused`.
 
 **Il PATH di Flutter.** `~/.bashrc` è a posto, ma i processi aperti prima della
 sua modifica ereditano un PATH senza Flutter. Per questo `flutter` e `dart` sono

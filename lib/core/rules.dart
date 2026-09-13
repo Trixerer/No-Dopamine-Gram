@@ -72,6 +72,11 @@ class RuleSet {
         .cast<Map<String, dynamic>>())
       TrackedRule(id: r['id'] as String, label: r['label'] as String, level: 'D'),
     const TrackedRule(
+      id: 'dom.refused',
+      label: 'Marcature rifiutate perché puntavano troppo in alto',
+      level: 'C',
+    ),
+    const TrackedRule(
       id: 'resp.blocklist',
       label: 'Post nascosti su segnalazione del livello D',
       level: 'D',
