@@ -49,3 +49,9 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Firma della release: mai nel repo.
+android/key.properties
+*.jks
+*.p12
+*.keystore
