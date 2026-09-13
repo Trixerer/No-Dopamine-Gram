@@ -2,7 +2,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
-        android:label="No Dopamine Gram"
+        android:label="NDG"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
