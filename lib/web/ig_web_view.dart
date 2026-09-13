@@ -142,6 +142,18 @@ class IgWebViewState extends State<IgWebView> {
       return NavigationActionPolicy.CANCEL;
     }
 
+    // I caricamenti veri di pagina passano di qui; dentro la SPA ci pensa
+    // `bootstrap.js`. Entrambi servono: questo è il caso del primo avvio e
+    // dei link esterni che rientrano.
+    final rewrite = widget.rules.rewriteFor(uri.path, uri.query);
+    if (rewrite != null) {
+      widget.store.record({rewrite.id: 1});
+      unawaited(controller.loadUrl(
+        urlRequest: URLRequest(url: WebUri('${uri.scheme}://${uri.host}${rewrite.to}')),
+      ));
+      return NavigationActionPolicy.CANCEL;
+    }
+
     return NavigationActionPolicy.ALLOW;
   }
 

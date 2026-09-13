@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 7,
   "updated": "2026-09-13",
   "home": "https://www.instagram.com/?variant=following",
   "host": "instagram.com",
@@ -25,12 +25,23 @@
     {
       "id": "route.reels",
       "pattern": "^/reels?(/|$)",
-      "label": "Reel"
+      "label": "Reel",
+      "backstop": true
     },
     {
       "id": "route.reels.audio",
       "pattern": "^/reels/audio(/|$)",
-      "label": "Audio dei Reel"
+      "label": "Audio dei Reel",
+      "backstop": true
+    }
+  ],
+  "rewrites": [
+    {
+      "id": "rewrite.home",
+      "label": "Casa sul feed cronologico",
+      "pattern": "^/$",
+      "to": "/?variant=following",
+      "linkSelector": "a[href=\"/\"]"
     }
   ],
   "css": [
@@ -99,7 +110,8 @@
       "climb": {
         "maxLevels": 8,
         "maxHtml": 20000
-      }
+      },
+      "backstop": true
     }
   ],
   "response": {

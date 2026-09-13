@@ -11,23 +11,37 @@ class RuleHealth {
     required this.rule,
     required this.hits,
     required this.lastHit,
+    required this.dormant,
   });
 
   final TrackedRule rule;
   final int hits;
   final DateTime? lastHit;
 
-  /// Non ha mai trovato niente: o Instagram è cambiato, o la regola era
-  /// sbagliata dall'inizio.
-  bool get neverSeen => hits == 0;
+  /// Il livello a cui appartiene è spento: il suo silenzio non dice niente,
+  /// né in bene né in male.
+  final bool dormant;
 
-  /// Funzionava e ha smesso. È il caso che conta davvero.
+  bool get _isFilter => rule.kind == RuleKind.filter;
+
+  /// Non ha mai trovato niente: o Instagram è cambiato, o la regola era
+  /// sbagliata dall'inizio. Non vale per le reti di sicurezza, che a non
+  /// scattare mai fanno il loro mestiere.
+  bool get neverSeen => _isFilter && hits == 0;
+
+  /// Funzionava e ha smesso. È il caso che conta davvero, e conta anche per
+  /// le reti di sicurezza: se una ha lavorato e poi ha smesso, è successo
+  /// qualcosa.
   bool get wentQuiet =>
+      (_isFilter || rule.kind == RuleKind.backstop) &&
       hits > 0 &&
       lastHit != null &&
       DateTime.now().difference(lastHit!) > const Duration(days: 14);
 
-  bool get isAlarming => wentQuiet || neverSeen;
+  /// Un contatore di guai che ha contato qualcosa.
+  bool get misfired => rule.kind == RuleKind.trouble && hits > 0;
+
+  bool get isAlarming => !dormant && (wentQuiet || neverSeen || misfired);
 }
 
 /// Conteggi del canarino e preferenze, su disco.
@@ -96,6 +110,12 @@ class NdStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Col livello D spento, le sue regole non possono trovare niente — e
+  /// `css.neutralized` nasconde solo ciò che il livello D segnala, quindi
+  /// tace insieme a lui.
+  bool _dormant(TrackedRule rule) =>
+      !responseEnabled && (rule.level == 'D' || rule.id == 'css.neutralized');
+
   List<RuleHealth> get health => [
         for (final rule in rules.tracked)
           RuleHealth(
@@ -104,6 +124,7 @@ class NdStore extends ChangeNotifier {
             lastHit: _last[rule.id] == null
                 ? null
                 : DateTime.fromMillisecondsSinceEpoch(_last[rule.id]!),
+            dormant: _dormant(rule),
           ),
       ];
 

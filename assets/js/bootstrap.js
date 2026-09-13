@@ -298,6 +298,59 @@
     return null;
   }
 
+  /* ---------- livello A: riscritture ---------- */
+  /* Bloccare non basta per il feed: "Per te" non e' una rotta da vietare, e'
+   * la rotta sbagliata. Questa e' l'unica cosa che il livello A riscrive
+   * invece di fermare, e ha bisogno di un ripiego: se un giorno la variante
+   * sparisse, riscrivere all'infinito lascerebbe l'utente senza casa. */
+  var lastRewrite = { to: null, at: 0 };
+
+  function rewriteFor() {
+    var rules = R.rewrites || [];
+    for (var i = 0; i < rules.length; i++) {
+      var r = rules[i];
+      try {
+        if (!new RegExp(r.pattern).test(location.pathname)) continue;
+      } catch (e) { continue; }
+      if (location.pathname + location.search === r.to) continue;
+      return r;
+    }
+    return null;
+  }
+
+  function enforceRewrite() {
+    var r = rewriteFor();
+    if (!r) return false;
+    var now = Date.now();
+    /* Siamo tornati qui subito dopo aver riscritto: la variante non ha retto.
+     * Meglio il feed sbagliato che un ciclo infinito. */
+    if (lastRewrite.to === r.to && now - lastRewrite.at < 2500) {
+      hit('rewrite.failed');
+      return false;
+    }
+    lastRewrite = { to: r.to, at: now };
+    hit(r.id);
+    location.replace(r.to);
+    return true;
+  }
+
+  /* La via breve: se il link di casa punta gia' dove vogliamo, ci naviga
+   * React e nessuno ricarica niente. La riscrittura di sopra resta come rete. */
+  function retargetLinks() {
+    (R.rewrites || []).forEach(function (r) {
+      if (!r.linkSelector) return;
+      var nodes;
+      try { nodes = document.querySelectorAll(r.linkSelector); } catch (e) { return; }
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].getAttribute('href') === r.to) continue;
+        nodes[i].setAttribute('href', r.to);
+        /* Anche ripuntare un link e' lavoro fatto: se non lo contassimo, la
+         * regola sembrerebbe muta proprio perche' funziona bene. */
+        hit(r.id);
+      }
+    });
+  }
+
   function enforceRoute() {
     var rule = routeBlocked(location.pathname);
     if (!rule) return false;
@@ -329,6 +382,7 @@
     lastPath = here;
     markRoute();
     if (enforceRoute()) return;
+    if (enforceRewrite()) return;
     report('nd_route', { path: location.pathname, search: location.search });
     scheduleScan();
     setTimeout(auditCss, 1200);
@@ -349,6 +403,7 @@
 
   function scanAll(root) {
     if (!root) return;
+    retargetLinks();
     scanAttrRules(root);
     scanPhraseRules(root);
     scanBlocklist(root);
@@ -376,8 +431,8 @@
     markRoute();
     installCss();
     startObserver();
-    lastPath = location.pathname;
-    enforceRoute();
+    lastPath = location.pathname + location.search;
+    if (!enforceRoute()) enforceRewrite();
     setTimeout(auditCss, 2500);
   }
 

@@ -53,6 +53,17 @@ void main() {
       expect(tagFor('/qualcuno/'), 'other');
     });
 
+    test('la riscrittura porta casa sul feed cronologico', () async {
+      final rules = await RuleSet.load();
+      expect(rules.rewriteFor('/', '')?.to, '/?variant=following');
+      // Già arrivati: non si riscrive di nuovo, o la riscrittura si rincorre.
+      expect(rules.rewriteFor('/', 'variant=following'), isNull);
+      // Tutto il resto non si tocca.
+      expect(rules.rewriteFor('/direct/inbox/', ''), isNull);
+      expect(rules.rewriteFor('/qualcuno/', ''), isNull);
+      expect(rules.rewriteFor('/p/Cxyz123/', ''), isNull);
+    });
+
     test('asInjectedJson allinea il livello D alla scelta dell\'utente', () async {
       final rules = await RuleSet.load();
       Map<String, dynamic> response(bool enabled) =>

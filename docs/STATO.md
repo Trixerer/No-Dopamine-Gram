@@ -135,6 +135,42 @@ dichiarazione nel `pubspec.yaml`), unicità degli id, cosa il livello A blocca e
 cosa non deve bloccare (`/reelsofcheese` non è la sezione Reel), e
 l'allineamento del livello D alla scelta dell'utente.
 
+### `rewrites` — l'unica cosa che il livello A riscrive
+"Per te" non è una sezione da vietare, è il feed sbagliato: bloccarla
+lascerebbe l'utente senza casa. `rewrite.home` manda `/` su
+`/?variant=following` per tre vie, in ordine di costo:
+
+1. **i link**: `retargetLinks()` ripunta gli `a[href="/"]` (logo e tasto casa)
+   sulla variante, così a navigare è React e nessuno ricarica niente;
+2. **la rete**: se la SPA finisce comunque su `/` nuda, `enforceRewrite()`
+   fa `location.replace`;
+3. **il cancello nativo**: `_gate` in `ig_web_view.dart`, per i caricamenti
+   veri di pagina (primo avvio, link esterni che rientrano).
+
+Il ripiego conta: se un giorno la variante sparisse, riscrivere all'infinito
+lascerebbe l'utente senza casa. Se entro 2,5 secondi si torna sulla rotta
+appena riscritta, la riscrittura si arrende e lo segna su `rewrite.failed`.
+
+### Il canarino sa distinguere tre silenzi
+Il primo canarino allarmava su qualunque regola a zero colpi, e il risultato
+era un banner rosso fisso — che è il modo più rapido per farsi ignorare. Ora
+ogni contatore dichiara che cosa significa il suo zero (`RuleKind`):
+
+| tipo | lo zero è | allarma quando |
+|---|---|---|
+| `filter` | un guasto | non ha mai trovato niente, o ha smesso da 14 giorni |
+| `backstop` | la norma | ha lavorato e poi ha smesso |
+| `trouble` | la notizia buona | conta anche un solo colpo |
+
+Le rotte dei Reel sono `backstop`: non possono scattare finché il CSS nasconde
+la voce che ci porta, quindi il loro silenzio dice che il livello B regge.
+`dom.refused` e `rewrite.failed` sono `trouble`. Le regole del livello D sono
+*dormienti* finché il livello D è spento, e con loro `css.neutralized`, che
+nasconde solo ciò che il livello D segnala.
+
+Con questo, sull'account di prova, il banner **non compare**: è la prima volta
+che l'app è invisibile come dice di voler essere.
+
 ### Configurazione Android
 `AndroidManifest.xml`: permesso `INTERNET`, etichetta "No Dopamine Gram",
 `<queries>` per l'intent VIEW https (link dei direct che escono nel browser).
@@ -183,11 +219,8 @@ Con il feed cronologico questo percorso è raramente in uso.
    `article:has(...)` sono validi (vedi sotto). Va riguardata quando un Reel
    comparirà davvero.
 
-3. **Decidere cosa fare del feed algoritmico.** Toccando "casa" dentro la SPA
-   si va su `/`, cioè "Per te": misurato, ci arrivano post di account non
-   seguiti e **inserzioni** (`jdsportsit`, "Ad · Shop now"). Il feed
-   cronologico è un'altra rotta, `/?variant=following`. O si riscrive la rotta
-   di casa, o si accetta che il tasto casa porti all'algoritmo.
+3. **Guardare `dom.feed.reelchip` quando passerà un Reel.** È l'unica regola
+   di cui non si sa ancora niente: nel feed non ne è passato uno.
 
 4. **Aggiornare il documento di design** con il cambio sul livello D.
 
