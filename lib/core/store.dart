@@ -48,6 +48,11 @@ class NdStore extends ChangeNotifier {
   Map<String, int> _hits = {};
   Map<String, int> _last = {};
 
+  /// Il ponte JavaScript è raggiungibile da qualunque frame della pagina,
+  /// iframe di terzi compresi: accettiamo solo gli id che conosciamo, così un
+  /// frame estraneo non può riempire le preferenze di chiavi inventate.
+  late final Set<String> _knownIds = {for (final r in rules.tracked) r.id};
+
   static Future<NdStore> open(RuleSet rules) async {
     final prefs = await SharedPreferences.getInstance();
     final store = NdStore(prefs, rules)
@@ -78,10 +83,14 @@ class NdStore extends ChangeNotifier {
   void record(Map<String, int> batch) {
     if (batch.isEmpty) return;
     final now = DateTime.now().millisecondsSinceEpoch;
+    var changed = false;
     batch.forEach((id, count) {
+      if (!_knownIds.contains(id)) return;
       _hits[id] = (_hits[id] ?? 0) + count;
       _last[id] = now;
+      changed = true;
     });
+    if (!changed) return;
     _prefs.setString(_kHits, jsonEncode(_hits));
     _prefs.setString(_kLast, jsonEncode(_last));
     notifyListeners();

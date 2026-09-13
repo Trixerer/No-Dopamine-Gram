@@ -1,6 +1,6 @@
 # Stato dei lavori — No Dopamine Gram
 
-Ultimo aggiornamento: **2 settembre 2026**. Documento di ripresa: leggi questo
+Ultimo aggiornamento: **13 settembre 2026**. Documento di ripresa: leggi questo
 prima di riaprire il progetto.
 
 Documento di design completo (perimetro, architettura, rischi):
@@ -15,13 +15,23 @@ Documento di design completo (perimetro, architettura, rischi):
 ## Dove siamo
 
 L'app è una WebView che carica Instagram e filtra ciò che si vede, su quattro
-livelli. Lo scheletro dei filtri è scritto e compila; **l'app non è ancora mai
-stata eseguita**, perché manca la UI che la tiene insieme (`main.dart` è ancora
-il contatore di default di Flutter).
+livelli. **L'app gira.** Il 13 settembre è stata costruita, installata ed
+eseguita per la prima volta sull'emulatore `Pixel_10_Pro` (Android 17): carica
+Instagram, il pannello del canarino si apre, e i conteggi arrivano dalla pagina
+vera.
 
-`flutter analyze` è pulito. `flutter build apk --debug` è andato a buon fine
-l'ultima volta che è stato lanciato (prima però che esistessero `lib/ui/` e i
-file nuovi: **da rilanciare**).
+Cosa ha già confermato il primo avvio, senza bisogno di login:
+
+- lo script si inietta a document-start e il ponte verso Dart funziona;
+- il **livello B ha trovato corrispondenze sulla pagina reale**:
+  `css.nav.reels` e `css.nav.explore` hanno segnato un colpo ciascuno, e nella
+  barra di navigazione le voci Reel ed Esplora non ci sono;
+- il tasto indietro, la pressione lunga per le diagnostiche e il ritorno alla
+  WebView funzionano, senza eccezioni nel logcat.
+
+`flutter analyze` è pulito, `flutter test` passa (4 test su `RuleSet`, che
+verificano anche che gli asset siano davvero nel bundle),
+`flutter build apk --debug` va a buon fine con tutti i file attuali.
 
 ### Ambiente
 
@@ -32,6 +42,22 @@ file nuovi: **da rilanciare**).
 | Android | AGP 9.1.0 · Kotlin 2.4.0 · Gradle 9.3.1 |
 | Emulatore | `android emulator start Pixel_10_Pro` → `emulator-5554` (già avviato una volta) |
 | Identità git | `treixerer <fabioripa99@gmail.com>`, impostata in locale sul repo |
+
+### Come si lancia
+
+```sh
+android emulator start Pixel_10_Pro          # → emulator-5554
+flutter build apk --debug
+android install --apks=build/app/outputs/flutter-apk/app-debug.apk \
+                --device=emulator-5554
+adb shell monkey -p it.fabioripa.no_dopamine_gram \
+                 -c android.intent.category.LAUNCHER 1
+android screen capture -o /tmp/shot.png
+```
+
+`android layout` non serve a niente qui: quasi tutto lo schermo è una WebView e
+non compare nel dump dell'accessibilità. Per guardare l'app si usa
+`android screen capture`.
 
 ---
 
@@ -69,6 +95,11 @@ ogni regola. Due allarmi distinti: `neverSeen` (non ha mai trovato niente) e
 `wentQuiet` (funzionava e ha smesso da più di 14 giorni — è il caso che conta).
 Non allarma sotto le tre sessioni.
 
+`record()` accetta solo gli id che esistono in `rules.tracked`: il ponte
+JavaScript è raggiungibile da qualunque frame della pagina, iframe di terzi
+compresi, e senza quel filtro un frame estraneo potrebbe riempire le preferenze
+di chiavi inventate.
+
 ### `lib/web/ig_web_view.dart` — la WebView e il livello A nativo
 Gate su `shouldOverrideUrlLoading`: host non consentiti → browser di sistema via
 `url_launcher`; rotte bloccate → `CANCEL`. Registra i tre handler JavaScript.
@@ -77,6 +108,32 @@ Gate su `shouldOverrideUrlLoading`: host non consentiti → browser di sistema v
 ### `lib/ui/diagnostics_page.dart` — il pannello del canarino
 Stato di ogni regola raggruppato per livello, interruttore per il livello D,
 azzeramento conteggi.
+
+### `lib/ui/shell_page.dart` — il pezzo che tiene insieme tutto
+Carica in un unico future le regole, lo store, il bootstrap JS e lo
+User-Agent, poi disegna la WebView a tutto schermo dentro una `SafeArea`.
+Niente cromatura: il banner in cima compare **solo** quando `store.alarming`
+non è vuoto, e le diagnostiche si aprono con una pressione lunga nell'angolo in
+alto a sinistra. `PopScope` manda il tasto indietro alla WebView e, quando non
+c'è più cronologia, esce. `WidgetsBindingObserver` scrive i cookie su disco
+alla pausa. Al ritorno dalle diagnostiche con `needsReload == true` la WebView
+viene ricreata sostituendo la `GlobalKey`: gli user script sono
+`initialUserScripts` e non si aggiornano a caldo.
+
+Lo UA si ricava dal default del motore (`getDefaultUserAgent()`) togliendo
+`; wv` **e** il token `Version/4.0`: sono i due segnali gratuiti che dicono
+"non sono un browser", e un UA scritto a mano sarebbe a sua volta
+un'incoerenza, perché i Client Hints riportano la versione vera di Chromium.
+
+### `lib/main.dart` — la radice
+`MaterialApp` con `ThemeMode.system` e `ShellPage` come home. Il tema si vede
+solo nelle diagnostiche e nel banner: tutto il resto dello schermo è Instagram.
+
+### `test/rules_test.dart` — le regole sotto test
+Quattro test su `RuleSet`: caricamento dall'asset (che verifica di riflesso la
+dichiarazione nel `pubspec.yaml`), unicità degli id, cosa il livello A blocca e
+cosa non deve bloccare (`/reelsofcheese` non è la sezione Reel), e
+l'allineamento del livello D alla scelta dell'utente.
 
 ### Configurazione Android
 `AndroidManifest.xml`: permesso `INTERNET`, etichetta "No Dopamine Gram",
@@ -115,45 +172,21 @@ Con il feed cronologico questo percorso è raramente in uso.
 
 ## Da fare, in ordine
 
-1. **Dichiarare gli asset nel `pubspec.yaml`.** La sezione `assets:` è ancora
-   commentata: senza, `rootBundle.loadString` fallisce e l'app non parte.
-   Servono `assets/rules/rules.json` e `assets/js/bootstrap.js`.
+1. **Primo accesso vero e verifica delle cinque domande aperte** (sotto).
+   Serve il login dell'utente: non è una cosa che si può automatizzare. È il
+   passo che sblocca tutti gli altri.
 
-2. **Scrivere `lib/ui/shell_page.dart`.** È il pezzo mancante che tiene insieme
-   tutto. Deve:
-   - caricare in un unico future `RuleSet.load()`, `NdStore.open()`, il
-     bootstrap JS da `rootBundle`, e lo User-Agent;
-   - **ricavare lo UA dal default della WebView** (`InAppWebViewController
-     .getDefaultUserAgent()`) togliendo `; wv`, invece di scriverne uno a mano:
-     un UA che non combacia con il motore vero è a sua volta un'incoerenza,
-     perché i Client Hints riportano la versione reale di Chromium;
-   - niente cromatura: WebView a tutto schermo, `SafeArea`;
-   - `PopScope` che manda il tasto indietro alla WebView (`goBackIfPossible`);
-   - `WidgetsBindingObserver` che chiama `flushCookies()` alla pausa, così la
-     sessione sopravvive e non si rifà il login (il login dentro una WebView è
-     il momento in cui Meta fa scattare le challenge);
-   - banner in cima **solo** quando `store.alarming` non è vuoto — l'app è
-     invisibile finché qualcosa non si rompe, che è il senso del canarino;
-   - accesso alle diagnostiche con pressione lunga in un angolo;
-   - al ritorno dalle diagnostiche con `needsReload == true`, ricreare la
-     WebView cambiando una `ValueKey`: gli user script sono `initialUserScripts`
-     e non si aggiornano a caldo.
-
-3. **Riscrivere `lib/main.dart`.** Ora è ancora il contatore di default.
-   `MaterialApp` con `ThemeMode.system` e `ShellPage` come home.
-
-4. **Compilare e installare sull'emulatore.**
-   `flutter build apk --debug` poi `android install` / `android run`,
-   `android screen` per lo screenshot.
-
-5. **Primo accesso vero e verifica delle cinque domande aperte** (sotto).
-   Serve il login dell'utente: non è una cosa che si può automatizzare.
-
-6. **Aggiornare il documento di design** con il cambio sul livello D.
-
-7. **Tarare le regole su ciò che si vede davvero.** I selettori CSS e le frasi
+2. **Tarare le regole su ciò che si vede davvero.** I selettori CSS e le frasi
    del livello C sono ipotesi ragionevoli scritte senza aver visto l'HTML
-   loggato: vanno confermati uno per uno guardando la pagina vera.
+   loggato: vanno confermati uno per uno guardando la pagina vera. Il primo
+   avvio ha già promosso `css.nav.reels` e `css.nav.explore` da ipotesi a
+   fatto; tutte le altre sono ancora a zero colpi.
+
+3. **Aggiornare il documento di design** con il cambio sul livello D.
+
+Chiuso il 13 settembre: asset dichiarati nel `pubspec.yaml`, `shell_page.dart`
+scritto, `main.dart` riscritto, smoke test del contatore sostituito con i test
+sulle regole, build e installazione sull'emulatore riuscite.
 
 ---
 
