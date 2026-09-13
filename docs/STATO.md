@@ -208,25 +208,30 @@ Con il feed cronologico questo percorso è raramente in uso.
 
 ## Da fare, in ordine
 
-1. **Primo accesso vero e verifica delle cinque domande aperte** (sotto).
-   Serve il login dell'utente: non è una cosa che si può automatizzare. È il
-   passo che sblocca tutti gli altri.
+1. **`dom.feed.reelchip`: l'ultima regola di cui non si sa niente.** Nel feed
+   non è ancora passato un Reel, quindi non è mai scattata. I suoi
+   `article:has(...)` sono plausibili — `<article>` esiste ed è il contenitore
+   di un post — ma plausibile non è verificato. Va guardata sul vivo alla
+   prima occasione.
 
-2. **Tarare le regole che restano.** Confermate sul campo il 13 settembre:
-   `css.nav.reels`, `css.explore.grid`, `css.profile.suggested`,
-   `dom.feed.suggested`. `dom.feed.reelchip` è ancora a zero, ma **non è
-   rotta**: nel feed non è ancora passato un solo Reel, e i suoi selettori
-   `article:has(...)` sono validi (vedi sotto). Va riguardata quando un Reel
-   comparirà davvero.
+2. **Aggiornare il documento di design.** È indietro su tre cose, non più una
+   sola: il cambio sul livello D, la riscrittura di rotta del livello A
+   (`rewrite.home`, che il documento non prevede: diceva "blocca", non
+   "riscrivi"), e i tre tipi di silenzio del canarino.
 
-3. **Guardare `dom.feed.reelchip` quando passerà un Reel.** È l'unica regola
-   di cui non si sa ancora niente: nel feed non ne è passato uno.
+3. **Provare l'app per qualche giorno davvero.** Tutto quello che si sa oggi
+   viene da una sessione sola su un account quasi vuoto. Le cose che si
+   romperanno — selettori che smettono di corrispondere, `wentQuiet` che
+   scatta — hanno bisogno di giorni, non di minuti.
 
-4. **Aggiornare il documento di design** con il cambio sul livello D.
+4. **Build di release.** Non è mai stata fatta: solo `--debug`. Servono una
+   firma vera e un giro di R8, e le regole di `keep` per `flutter_inappwebview`
+   sono un punto in cui ci si fa male.
 
-Chiuso il 13 settembre: asset dichiarati nel `pubspec.yaml`, `shell_page.dart`
-scritto, `main.dart` riscritto, smoke test del contatore sostituito con i test
-sulle regole, build e installazione sull'emulatore riuscite.
+Chiuso il 13 settembre: asset dichiarati, `shell_page.dart` e `main.dart`
+scritti, primo avvio e primo accesso vero, il cancello del livello C, la
+ricerca sbloccata con le etichette di rotta, `rewrite.home`, i tre tipi di
+silenzio del canarino. Undici test, `flutter analyze` pulito.
 
 ---
 
@@ -238,19 +243,27 @@ sulle regole, build e installazione sull'emulatore riuscite.
    esattamente `https://www.instagram.com/?variant=following`, che è già il
    valore di `home`. **Il livello D resta dormiente.**
 
-   Due code da tenere a mente: il passaggio fra le varianti cambia solo la
-   query e non il path (per questo `onRouteChange` ora guarda anche
-   `location.search`), e navigando su "casa" dentro la SPA si torna a `/`
-   senza variante — il feed algoritmico rientra dalla finestra. Va deciso se
-   riscrivere la rotta.
+   Le due code sono state chiuse: `onRouteChange` guarda anche
+   `location.search`, e la rotta di casa viene riscritta (`rewrite.home`).
 2. **Quanto sono complete storie e direct sul web mobile** rispetto all'app
-   nativa? È il rischio più concreto per la lista di funzioni.
-3. **Il service worker `/www-service-worker.js?s=push` ha un handler `fetch`?**
-   Se sì gira in un contesto separato e il nostro hook non lo vede: buco nel
-   filtro.
+   nativa? Parzialmente risposto: i direct si aprono e si leggono (navigate
+   più conversazioni), e l'anello delle storie compare nel feed. Quello che
+   **non** è stato provato è il resto: pubblicare, rispondere a una storia,
+   le note, le chiamate. Resta il rischio più concreto per la lista di
+   funzioni.
+3. ~~**Il service worker `/www-service-worker.js?s=push` ha un handler
+   `fetch`?**~~ **No, verificato il 13 settembre.** Una sola registrazione,
+   scope `https://www.instagram.com/`. Né il worker (1,2 KB) né il file che
+   importa (`Yh6ggb9DxNQ.js`, 114 KB) registrano `fetch`, e `respondWith` non
+   compare mai: ascoltano `message`, `error`, `abort`, `unhandledrejection`.
+   Non intercetta la rete, quindi **non c'è nessun buco**: l'aggancio del
+   livello D vede tutto il traffico. Da ricontrollare se un giorno quel file
+   cambiasse nome.
 4. **Quali risposte arrivano in streaming?** Con la lettura via `clone()` il
    problema è molto ridotto, ma i corpi a chunk vanno comunque riconosciuti.
-5. **Il login dentro la WebView passa liscio** o fa scattare una challenge?
+5. ~~**Il login dentro la WebView passa liscio?**~~ **Sì, il 13 settembre è
+   passato senza challenge.** Una volta sola e su una rete sola, però: non è
+   una garanzia, è un precedente.
 
 ---
 
